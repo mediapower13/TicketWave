@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, wakeUpSupabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
@@ -15,11 +15,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Wake up the Supabase project (handles free-tier sleeping)
+    wakeUpSupabase()
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
       else setLoading(false)
+    }).catch(() => {
+      setLoading(false)
     })
 
     // Listen for auth changes
@@ -44,10 +49,31 @@ export function AuthProvider({ children }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle() // Use maybeSingle to avoid error when profile doesn't exist yet
 
       if (error) throw error
-      setProfile(data)
+      
+      if (!data) {
+        // Profile may not exist yet (trigger delay) — try to create it
+        const { data: userData } = await supabase.auth.getUser()
+        if (userData?.user) {
+          await supabase.from('profiles').upsert({
+            id: userData.user.id,
+            email: userData.user.email,
+            full_name: userData.user.user_metadata?.full_name || '',
+            role: userData.user.user_metadata?.role || 'attendee',
+          })
+          // Fetch again after upsert
+          const { data: retryData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle()
+          setProfile(retryData)
+        }
+      } else {
+        setProfile(data)
+      }
     } catch (err) {
       console.error('Error fetching profile:', err)
     } finally {
@@ -56,40 +82,60 @@ export function AuthProvider({ children }) {
   }
 
   const signUp = async ({ email, password, fullName, role = 'attendee' }) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, role },
-      },
-    })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName, role },
+          emailRedirectTo: `${window.location.origin}/auth?tab=signin`,
+        },
+      })
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Sign up failed. Please try again.' } }
+    }
   }
 
   const signIn = async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Sign in failed. Please check your connection and try again.' } }
+    }
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (!error) {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (!error) {
+        setUser(null)
+        setProfile(null)
+      }
+      return { error }
+    } catch (err) {
+      // Force local sign out even if server fails
       setUser(null)
       setProfile(null)
+      return { error: null }
     }
-    return { error }
   }
 
   const updateProfile = async (updates) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single()
 
-    if (!error) setProfile(data)
-    return { data, error }
+      if (!error) setProfile(data)
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message } }
+    }
   }
 
   const isOrganizer = profile?.role === 'organizer' || profile?.role === 'admin'

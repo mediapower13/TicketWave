@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
@@ -15,11 +16,19 @@ import './index.css'
 
 function ProtectedRoute({ children, requireOrganizer = false }) {
   const { user, profile, loading } = useAuth()
+  const [timedOut, setTimedOut] = useState(false)
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading) return
+    const t = setTimeout(() => setTimedOut(true), 10000) // 10s max wait
+    return () => clearTimeout(t)
+  }, [loading])
+
+  if (loading && !timedOut) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '1rem' }}>
         <div className="spinner" style={{ width: 40, height: 40 }} />
+        <p style={{ color: 'var(--color-text-3)', fontSize: '0.9rem' }}>Connecting…</p>
       </div>
     )
   }
