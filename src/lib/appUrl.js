@@ -1,12 +1,12 @@
 const stripTrailingSlash = (value) => value.replace(/\/+$/, '')
 
 export const getAppBaseUrl = () => {
-  const configuredUrl = import.meta.env.VITE_APP_URL?.trim()
-  if (configuredUrl) return stripTrailingSlash(configuredUrl)
-
   if (typeof window !== 'undefined' && window.location?.origin) {
     return stripTrailingSlash(window.location.origin)
   }
+
+  const configuredUrl = import.meta.env.VITE_APP_URL?.trim()
+  if (configuredUrl) return stripTrailingSlash(configuredUrl)
 
   return 'http://localhost:5173'
 }
