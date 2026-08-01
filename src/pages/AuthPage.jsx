@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { getAppUrl } from '../lib/appUrl'
 import toast from 'react-hot-toast'
 
 /* ── Human-readable Supabase error messages ─────────────────────── */
@@ -147,7 +148,7 @@ export default function AuthPage() {
     const { error: err } = await supabase.auth.resend({
       type: 'signup',
       email: pendingEmail,
-      options: { emailRedirectTo: `${window.location.origin}/auth?tab=signin` },
+      options: { emailRedirectTo: getAppUrl('/auth?tab=signin') },
     })
     if (err) {
       toast.error('Could not resend: ' + parseError(err))
@@ -166,14 +167,14 @@ export default function AuthPage() {
       email: form.email,
       options: {
         shouldCreateUser: false, // Only send to existing accounts
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: getAppUrl('/'),
       },
     })
     if (err) {
       // If user doesn't exist, allow creation via magic link
       const { error: err2 } = await supabase.auth.signInWithOtp({
         email: form.email,
-        options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/` },
+        options: { shouldCreateUser: true, emailRedirectTo: getAppUrl('/') },
       })
       if (err2) {
         setError(parseError(err2)); setLoading(false); return

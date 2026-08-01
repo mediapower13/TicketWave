@@ -12,7 +12,27 @@ import MyTicketsPage from './pages/MyTicketsPage'
 import TicketViewPage from './pages/TicketViewPage'
 import DashboardPage from './pages/DashboardPage'
 import ScannerPage from './pages/ScannerPage'
+import { isSupabaseConfigured } from './lib/supabase'
 import './index.css'
+
+function ConfigErrorScreen() {
+  return (
+    <main className="page" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem' }}>
+      <div className="card" style={{ maxWidth: 680, width: '100%', padding: '2rem' }}>
+        <p className="section-eyebrow" style={{ marginBottom: '0.75rem' }}>Deployment setup required</p>
+        <h1 className="section-title" style={{ marginTop: 0 }}>Missing Supabase environment variables</h1>
+        <p style={{ color: 'var(--color-text-2)', lineHeight: 1.7 }}>
+          The app cannot connect to Supabase on Vercel until <strong>VITE_SUPABASE_URL</strong> and
+          <strong> VITE_SUPABASE_ANON_KEY</strong> are added to the Vercel project environment variables.
+        </p>
+        <p style={{ color: 'var(--color-text-3)', lineHeight: 1.7, marginBottom: 0 }}>
+          After adding them, redeploy the app. The auth redirects already use the deployed origin or the
+          configured <strong>VITE_APP_URL</strong>, so signup and confirmation links will follow the production host.
+        </p>
+      </div>
+    </main>
+  )
+}
 
 function ProtectedRoute({ children, requireOrganizer = false }) {
   const { user, profile, loading } = useAuth()
@@ -78,6 +98,10 @@ function AppRoutes() {
 }
 
 export default function App() {
+  if (!isSupabaseConfigured) {
+    return <ConfigErrorScreen />
+  }
+
   return (
     <Router>
       <AuthProvider>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, wakeUpSupabase } from '../lib/supabase'
+import { getAppUrl } from '../lib/appUrl'
 
 const AuthContext = createContext({})
 
@@ -88,7 +89,7 @@ export function AuthProvider({ children }) {
         password,
         options: {
           data: { full_name: fullName, role },
-          emailRedirectTo: `${window.location.origin}/auth?tab=signin`,
+          emailRedirectTo: getAppUrl('/auth?tab=signin'),
         },
       })
       return { data, error }
