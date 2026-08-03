@@ -52,7 +52,7 @@ export default function HomePage() {
     const fetchFeaturedEvents = async () => {
       const { data } = await supabase
         .from('events')
-        .select('*')
+        .select('*, ticket_types(id, name, price, quantity, quantity_sold)')
         .eq('status', 'published')
         .gte('start_at', new Date().toISOString())
         .order('start_at', { ascending: true })

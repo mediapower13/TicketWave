@@ -32,7 +32,7 @@ export default function EventsPage() {
     try {
       let query = supabase
         .from('events')
-        .select('*', { count: 'exact' })
+        .select('*, ticket_types(id, name, price, quantity, quantity_sold)', { count: 'exact' })
         .eq('status', 'published')
         .gte('start_at', new Date().toISOString())
 

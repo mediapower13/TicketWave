@@ -104,8 +104,19 @@ export default function EventCard({ event }) {
         </div>
 
         <div className="event-card-footer">
-          <div className={`event-card-price ${event.price === 0 ? 'free' : 'paid'}`}>
-            {formatCurrency(event.price, event.currency)}
+          <div>
+            {event.ticket_types && event.ticket_types.length > 1 ? (
+              <div>
+                <div className={`event-card-price ${Math.min(...event.ticket_types.map(t => t.price)) === 0 ? 'free' : 'paid'}`}>
+                  {Math.min(...event.ticket_types.map(t => t.price)) === 0 ? 'From Free' : `From ${formatCurrency(Math.min(...event.ticket_types.map(t => t.price)), event.currency)}`}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--color-text-4)', marginTop: '0.125rem' }}>{event.ticket_types.length} ticket types</div>
+              </div>
+            ) : (
+              <div className={`event-card-price ${event.price === 0 ? 'free' : 'paid'}`}>
+                {formatCurrency(event.price, event.currency)}
+              </div>
+            )}
           </div>
           <button
             className={`btn btn-sm ${isSoldOut ? 'btn-ghost' : 'btn-primary'}`}
