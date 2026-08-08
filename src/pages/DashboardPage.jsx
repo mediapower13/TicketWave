@@ -254,6 +254,7 @@ export default function DashboardPage() {
           {[
             { key: 'overview', label: 'My Events' },
             { key: 'attendees', label: `Attendees (${tickets.length})` },
+            { key: 'analytics', label: '📊 Analytics' },
           ].map(t => (
             <button key={t.key} className={`filter-chip ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)} id={`dashboard-tab-${t.key}`}>
               {t.label}
@@ -402,9 +403,139 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Analytics Tab */}
+        {tab === 'analytics' && (() => {
+          const validTickets = tickets.filter(t => t.status !== 'cancelled' && t.status !== 'refunded')
+
+          // Revenue by event (top 6)
+          const revenueByEvent = events.map(e => ({
+            name: e.title.length > 28 ? e.title.slice(0, 28) + '…' : e.title,
+            revenue: validTickets.filter(t => t.event_id === e.id && t.amount_paid != null).reduce((s, t) => s + Number(t.amount_paid || 0), 0),
+            sold: validTickets.filter(t => t.event_id === e.id).length,
+          })).filter(e => e.revenue > 0 || e.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 6)
+          const maxRevenue = Math.max(...revenueByEvent.map(e => e.revenue), 1)
+
+          // Ticket type breakdown
+          const byType = {}
+          validTickets.forEach(t => { const k = t.ticket_type_name || 'General'; byType[k] = (byType[k] || 0) + 1 })
+          const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1])
+          const maxTypeCount = Math.max(...typeEntries.map(e => e[1]), 1)
+
+          // Daily sales — last 14 days
+          const days = Array.from({ length: 14 }, (_, i) => {
+            const d = new Date(); d.setDate(d.getDate() - (13 - i)); return d.toISOString().slice(0, 10)
+          })
+          const dailySales = days.map(day => ({
+            label: new Date(day).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }),
+            count: validTickets.filter(t => t.created_at?.slice(0, 10) === day).length,
+            revenue: validTickets.filter(t => t.created_at?.slice(0, 10) === day && t.amount_paid != null).reduce((s, t) => s + Number(t.amount_paid || 0), 0),
+          }))
+          const maxDailyRev = Math.max(...dailySales.map(d => d.revenue), 1)
+          const COLORS = ['var(--color-primary-light)', 'var(--color-emerald)', 'var(--color-sky)', 'var(--color-gold)', 'var(--color-rose)', '#a78bfa']
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+              {/* Daily Revenue — last 14 days */}
+              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Revenue — Last 14 Days</h3>
+                {dailySales.every(d => d.revenue === 0) ? (
+                  <p style={{ color: 'var(--color-text-4)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>No sales data yet — start selling tickets to see analytics!</p>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: 120, overflow: 'hidden' }}>
+                    {dailySales.map((d, i) => (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
+                        <div
+                          title={`${d.label}: ₦${d.revenue.toLocaleString('en-NG')} (${d.count} tickets)`}
+                          style={{
+                            width: '100%',
+                            height: `${Math.max(4, (d.revenue / maxDailyRev) * 100)}%`,
+                            background: d.revenue > 0 ? 'var(--gradient-primary)' : 'var(--color-border)',
+                            borderRadius: '3px 3px 0 0',
+                            transition: 'height 0.4s ease',
+                            cursor: 'default',
+                          }}
+                        />
+                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-4)', writingMode: 'vertical-rl', transform: 'rotate(180deg)', height: 36, textAlign: 'center' }}>{d.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                {/* Revenue by Event */}
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Revenue by Event</h3>
+                  {revenueByEvent.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-4)', fontSize: '0.85rem' }}>No revenue data yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                      {revenueByEvent.map((e, i) => (
+                        <div key={i}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-2)', fontWeight: 500 }}>{e.name}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary-light)' }}>₦{e.revenue.toLocaleString('en-NG')}</span>
+                          </div>
+                          <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(e.revenue / maxRevenue) * 100}%`, background: COLORS[i % COLORS.length], borderRadius: 3, transition: 'width 0.5s ease' }} />
+                          </div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-4)' }}>{e.sold} ticket{e.sold !== 1 ? 's' : ''} sold</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ticket Type Breakdown */}
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', marginBottom: '1.25rem' }}>Ticket Type Sales</h3>
+                  {typeEntries.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-4)', fontSize: '0.85rem' }}>No tickets sold yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                      {typeEntries.map(([name, count], i) => (
+                        <div key={i}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-2)', fontWeight: 500 }}>{name}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: COLORS[i % COLORS.length] }}>{count} sold</span>
+                          </div>
+                          <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(count / maxTypeCount) * 100}%`, background: COLORS[i % COLORS.length], borderRadius: 3, transition: 'width 0.5s ease' }} />
+                          </div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-4)' }}>{Math.round((count / validTickets.length) * 100)}% of total</span>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-3)' }}>Total tickets</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{validTickets.length}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Summary row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                {[
+                  { label: 'Avg. Ticket Price', value: validTickets.filter(t => t.amount_paid > 0).length > 0 ? `₦${Math.round(totalRevenue / validTickets.filter(t => t.amount_paid > 0).length).toLocaleString('en-NG')}` : '—' },
+                  { label: 'Free Tickets', value: validTickets.filter(t => !t.amount_paid || t.amount_paid === 0).length },
+                  { label: 'Check-in Rate', value: tickets.length > 0 ? `${Math.round((tickets.filter(t => t.status === 'used').length / tickets.length) * 100)}%` : '—' },
+                ].map((s, i) => (
+                  <div key={i} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xl)', padding: '1.25rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--color-primary-light)', marginBottom: '0.25rem' }}>{s.value}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Create / Edit Event Modal */}
+
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" style={{ maxWidth: 720 }} onClick={e => e.stopPropagation()}>

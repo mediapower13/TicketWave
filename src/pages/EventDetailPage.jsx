@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { MapPin, Calendar, Clock, Users, Globe, Share2, ArrowLeft, Wifi, CheckCircle, ExternalLink, X } from 'lucide-react'
+import { MapPin, Calendar, Clock, Users, Globe, Share2, ArrowLeft, Wifi, CheckCircle, ExternalLink, X, MessageCircle, Navigation } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate, formatTime, formatCurrency, getEventTypeLabel } from '../lib/constants'
@@ -287,8 +287,35 @@ export default function EventDetailPage() {
 
             {/* Tags */}
             {event.tags?.length > 0 && (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
                 {event.tags.map(tag => <span key={tag} className="badge badge-primary">#{tag}</span>)}
+              </div>
+            )}
+
+            {/* Map — physical/hybrid events with a location */}
+            {(event.event_type === 'physical' || event.event_type === 'hybrid') && (event.venue_name || event.location) && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem' }}>Location</h2>
+                <div style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden', border: '1px solid var(--color-border)', marginBottom: '0.875rem', height: 260, position: 'relative', background: 'var(--color-bg-3)' }}>
+                  <iframe
+                    title="Event location map"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0, display: 'block', filter: 'invert(90%) hue-rotate(180deg)' }}
+                    loading="lazy"
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent([event.venue_name, event.location].filter(Boolean).join(', '))}&output=embed&z=15`}
+                    allowFullScreen
+                  />
+                </div>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent([event.venue_name, event.location].filter(Boolean).join(', '))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-sm"
+                  id="get-directions-btn"
+                >
+                  <Navigation size={14} /> Get Directions
+                </a>
               </div>
             )}
           </div>
@@ -308,6 +335,17 @@ export default function EventDetailPage() {
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--color-text-4)', fontFamily: 'monospace', marginBottom: '1.25rem' }}>{primaryTicket.ticket_number}</p>
                   <Link to={`/tickets/${primaryTicket.id}`} className="btn btn-primary" style={{ width: '100%' }}>View Full Ticket</Link>
+                  {/* WhatsApp share */}
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`I just got my ticket for "${event.title}"! 🎟️ Join me:\n${window.location.href}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost btn-sm"
+                    style={{ width: '100%', marginTop: '0.5rem', color: '#25D366', borderColor: 'rgba(37,211,102,0.3)' }}
+                    id="whatsapp-share-btn"
+                  >
+                    <MessageCircle size={14} /> Share on WhatsApp
+                  </a>
                   {userTickets.length > 1 && (
                     <p style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', marginTop: '0.75rem' }}>+{userTickets.length - 1} more ticket{userTickets.length > 2 ? 's' : ''} — <Link to="/tickets" style={{ color: 'var(--color-primary-light)' }}>View all</Link></p>
                   )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Download, Share2, Calendar, MapPin, Clock, User, CheckCircle, XCircle, Phone, CalendarPlus } from 'lucide-react'
+import { ArrowLeft, Download, Share2, Calendar, MapPin, Clock, User, CheckCircle, XCircle, Phone, CalendarPlus, MessageCircle } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import html2canvas from 'html2canvas'
 import { supabase } from '../lib/supabase'
@@ -162,6 +162,16 @@ export default function TicketViewPage() {
               )}
             </div>
             <button onClick={handleShare} className="btn btn-secondary btn-sm" id="ticket-share"><Share2 size={14} /> Share</button>
+            <a
+              href={ticket ? `https://wa.me/?text=${encodeURIComponent(`My ticket for "${ticket.events?.title}"\nView: ${window.location.href}`)}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-sm"
+              style={{ color: '#25D366', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.25)' }}
+              id="ticket-whatsapp"
+            >
+              <MessageCircle size={14} /> WhatsApp
+            </a>
             <button onClick={handleDownload} className="btn btn-secondary btn-sm" disabled={downloading} id="ticket-download">
               {downloading ? <div className="spinner" style={{ width: 14, height: 14 }} /> : <Download size={14} />} Save
             </button>
