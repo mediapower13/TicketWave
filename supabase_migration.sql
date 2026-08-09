@@ -38,7 +38,7 @@ CREATE POLICY "Organizer can manage ticket_types"
     )
   );
 
--- ============================================================
+
 
 -- 2. Extend the tickets table with new fields
 --    (IF NOT EXISTS is safe — won't error if already added)
