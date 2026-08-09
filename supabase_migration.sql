@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS ticket_types (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+
 -- Row Level Security
 ALTER TABLE ticket_types ENABLE ROW LEVEL SECURITY;
 
