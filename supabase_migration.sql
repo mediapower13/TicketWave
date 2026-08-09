@@ -49,7 +49,6 @@ ALTER TABLE tickets
   ADD COLUMN IF NOT EXISTS attendee_phone  TEXT,
   ADD COLUMN IF NOT EXISTS amount_paid     NUMERIC;
 
--- ============================================================
 
 -- 3. Extend the orders table with payment_method if missing
 ALTER TABLE orders
