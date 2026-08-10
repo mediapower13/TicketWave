@@ -16,6 +16,7 @@ function buildGoogleCalendarUrl(event) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
+
 export default function MyTicketsPage() {
   const { user } = useAuth()
   const [tickets, setTickets] = useState([])
