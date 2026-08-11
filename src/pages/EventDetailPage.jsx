@@ -18,6 +18,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showFreeModal, setShowFreeModal] = useState(false)
   const [userTickets, setUserTickets] = useState([])
   const [selectedType, setSelectedType] = useState(null)
   const [quantity, setQuantity] = useState(1)
@@ -78,8 +79,9 @@ export default function EventDetailPage() {
     // Pre-fill name from profile
     setCheckoutName(profile?.full_name || '')
     setCheckoutPhone('')
+    // Always show modal to collect name/phone — even for free tickets
     if (selectedType.price === 0) {
-      createTickets(0, null)
+      setShowFreeModal(true)
     } else {
       setShowModal(true)
     }
@@ -110,17 +112,21 @@ export default function EventDetailPage() {
         createdTickets.push(ticket)
       }
 
-      // Create order record
-      await supabase.from('orders').insert({
-        ticket_id: createdTickets[0].id,
-        attendee_id: user.id,
-        event_id: event.id,
-        amount: amountPaid,
-        currency: event.currency || 'NGN',
-        payment_status: 'completed',
-        paystack_reference: paystackRef || null,
-        payment_method: paystackRef ? 'paystack' : 'free',
-      })
+      // Create order record (wrapped separately — doesn't block ticket if orders table is missing)
+      try {
+        await supabase.from('orders').insert({
+          ticket_id: createdTickets[0].id,
+          attendee_id: user.id,
+          event_id: event.id,
+          amount: amountPaid,
+          currency: event.currency || 'NGN',
+          payment_status: 'completed',
+          paystack_reference: paystackRef || null,
+          payment_method: paystackRef ? 'paystack' : 'free',
+        })
+      } catch (orderErr) {
+        console.warn('Order record failed (non-critical):', orderErr.message)
+      }
 
       // Update ticket_type quantity_sold
       if (tType.id !== 'fallback') {
@@ -301,9 +307,10 @@ export default function EventDetailPage() {
                     title="Event location map"
                     width="100%"
                     height="100%"
-                    style={{ border: 0, display: 'block', filter: 'invert(90%) hue-rotate(180deg)' }}
+                    style={{ border: 0, display: 'block' }}
                     loading="lazy"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent([event.venue_name, event.location].filter(Boolean).join(', '))}&output=embed&z=15`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent([event.venue_name, event.location].filter(Boolean).join(', ') + ', Nigeria')}&output=embed&z=15&hl=en`}
+                    referrerPolicy="no-referrer-when-downgrade"
                     allowFullScreen
                   />
                 </div>
@@ -314,7 +321,7 @@ export default function EventDetailPage() {
                   className="btn btn-secondary btn-sm"
                   id="get-directions-btn"
                 >
-                  <Navigation size={14} /> Get Directions
+                  <Navigation size={14} /> Get Directions on Google Maps
                 </a>
               </div>
             )}
@@ -502,6 +509,49 @@ export default function EventDetailPage() {
                   {purchasing ? <div className="spinner" /> : `Pay ${formatCurrency(selectedType.price * quantity, event.currency)} via Paystack`}
                 </button>
                 <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Free Ticket Modal — collects name/phone before registering */}
+        {showFreeModal && selectedType && (
+          <div className="modal-overlay" onClick={() => setShowFreeModal(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Register for Free Ticket 🎟️</h2>
+                <button className="modal-close" onClick={() => setShowFreeModal(false)} id="free-modal-close"><X size={18} /></button>
+              </div>
+              <div className="modal-body">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 'var(--radius-lg)', padding: '0.875rem 1rem' }}>
+                    <p style={{ fontWeight: 700, color: 'var(--color-emerald)', marginBottom: '0.25rem' }}>Free Admission 🎉</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--color-text-3)' }}>{event.title} · {selectedType.name}</p>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="free-checkout-name">Full Name *</label>
+                    <input id="free-checkout-name" type="text" className="form-input" placeholder="Your full name" value={checkoutName} onChange={e => setCheckoutName(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="free-checkout-email">Email</label>
+                    <input id="free-checkout-email" type="email" className="form-input" value={user?.email || ''} disabled style={{ opacity: 0.6 }} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="free-checkout-phone">Phone Number <span style={{ color: 'var(--color-text-4)', fontWeight: 400 }}>(optional)</span></label>
+                    <input id="free-checkout-phone" type="tel" className="form-input" placeholder="+234 800 000 0000" value={checkoutPhone} onChange={e => setCheckoutPhone(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-primary btn-lg"
+                  onClick={() => { if (!checkoutName.trim()) { toast.error('Please enter your name'); return } setShowFreeModal(false); createTickets(0, null) }}
+                  disabled={purchasing}
+                  id="free-register-btn"
+                >
+                  {purchasing ? <div className="spinner" /> : '🎉 Confirm Free Registration'}
+                </button>
+                <button className="btn btn-ghost" onClick={() => setShowFreeModal(false)}>Cancel</button>
               </div>
             </div>
           </div>

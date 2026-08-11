@@ -30,11 +30,13 @@ export default function EventsPage() {
   const fetchEvents = async (searchTerm = search) => {
     setLoading(true)
     try {
-      let query = supabase
+      // Use start of today so events starting today still show
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+        let query = supabase
         .from('events')
         .select('*, ticket_types(id, name, price, quantity, quantity_sold)', { count: 'exact' })
         .eq('status', 'published')
-        .gte('start_at', new Date().toISOString())
+        .gte('start_at', todayStart.toISOString())
 
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
