@@ -68,12 +68,23 @@ export default function DashboardPage() {
   }, [user])
 
   const fetchEvents = async () => {
-    const { data } = await supabase
-      .from('events')
-      .select('*, ticket_types(id, name, price, quantity, quantity_sold)')
-      .eq('organizer_id', user.id)
-      .order('created_at', { ascending: false })
-    setEvents(data || [])
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*, ticket_types(id, name, price, quantity, quantity_sold)')
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setEvents(data || [])
+    } catch (err) {
+      // ticket_types table may not exist yet — fallback to events without types
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .eq('organizer_id', user.id)
+        .order('created_at', { ascending: false })
+      setEvents((data || []).map(e => ({ ...e, ticket_types: [] })))
+    }
     setLoading(false)
   }
 
@@ -176,7 +187,7 @@ export default function DashboardPage() {
         eventId = data.id
       }
 
-      // Insert ticket types
+      // Insert ticket types (only if ticket_types table exists)
       const typePayload = ticketTypes.map((t, i) => ({
         event_id: eventId,
         name: t.name,
@@ -186,8 +197,15 @@ export default function DashboardPage() {
         quantity_sold: t.quantity_sold || 0,
         sort_order: i,
       }))
-      const { error: typeError } = await supabase.from('ticket_types').insert(typePayload)
-      if (typeError) throw typeError
+      try {
+        const { error: typeError } = await supabase.from('ticket_types').insert(typePayload)
+        if (typeError) {
+          console.warn('ticket_types insert failed (run SQL migration):', typeError.message)
+          toast('Event saved! Run the SQL migration to enable ticket types.', { icon: '⚠️' })
+        }
+      } catch (typeErr) {
+        console.warn('ticket_types table missing:', typeErr.message)
+      }
 
       toast.success(editingEvent ? 'Event updated! ✅' : 'Event created! 🎉')
       setShowForm(false)

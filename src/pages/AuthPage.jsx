@@ -106,7 +106,9 @@ export default function AuthPage() {
       toast.error('Sign in failed')
     } else if (data?.session) {
       toast.success('Welcome back! 🎉')
-      navigate('/')
+      // Redirect organizers to dashboard, attendees to home
+      const userRole = data.session.user?.user_metadata?.role
+      navigate(userRole === 'organizer' ? '/dashboard' : '/')
     }
     setLoading(false)
   }
@@ -130,7 +132,7 @@ export default function AuthPage() {
     } else if (data?.session) {
       // Email confirmation OFF — user is immediately logged in
       toast.success('Account created! Welcome 🎉')
-      navigate('/')
+      navigate(role === 'organizer' ? '/dashboard' : '/')
     } else {
       // Email confirmation ON — need to verify
       setPendingEmail(form.email)

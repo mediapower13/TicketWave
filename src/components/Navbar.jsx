@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Ticket, LayoutDashboard, QrCode, LogOut, User, Menu, X, Zap } from 'lucide-react'
+import { Ticket, LayoutDashboard, QrCode, LogOut, User, Menu, X, Zap, Plus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -51,7 +51,7 @@ export default function Navbar() {
                 </NavLink>
               </li>
             )}
-            {isOrganizer && (
+            {isOrganizer ? (
               <>
                 <li>
                   <NavLink to="/dashboard" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
@@ -64,7 +64,13 @@ export default function Navbar() {
                   </NavLink>
                 </li>
               </>
-            )}
+            ) : user ? (
+              <li>
+                <NavLink to="/dashboard" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}>
+                  <Plus size={15} /> Create Event
+                </NavLink>
+              </li>
+            ) : null}
           </ul>
 
           <div className="navbar-actions">
@@ -185,7 +191,7 @@ export default function Navbar() {
                 </NavLink>
               </li>
             )}
-            {isOrganizer && (
+            {isOrganizer ? (
               <>
                 <li>
                   <NavLink to="/dashboard" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
@@ -200,7 +206,14 @@ export default function Navbar() {
                   </NavLink>
                 </li>
               </>
-            )}
+            ) : user ? (
+              <li>
+                <NavLink to="/dashboard" className={({ isActive }) => `navbar-link ${isActive ? 'active' : ''}`}
+                  onClick={() => setMenuOpen(false)}>
+                  <Plus size={15} /> Create Event
+                </NavLink>
+              </li>
+            ) : null}
           </ul>
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
             {user ? (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Zap, ArrowRight, MapPin, Calendar, Shield, Star, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import EventCard from '../components/EventCard'
 
 const FEATURES = [
@@ -47,14 +48,17 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const navigate = useNavigate()
+  const { user, isOrganizer } = useAuth()
 
   useEffect(() => {
     const fetchFeaturedEvents = async () => {
+      // Use start of today so today's events still show
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
       const { data } = await supabase
         .from('events')
         .select('*, ticket_types(id, name, price, quantity, quantity_sold)')
         .eq('status', 'published')
-        .gte('start_at', new Date().toISOString())
+        .gte('start_at', todayStart.toISOString())
         .order('start_at', { ascending: true })
         .limit(6)
       setEvents(data || [])
@@ -131,9 +135,19 @@ export default function HomePage() {
               <Link to="/events" className="btn btn-primary btn-lg" id="hero-browse-events">
                 Browse Events <ArrowRight size={16} />
               </Link>
-              <Link to="/auth?tab=signup&role=organizer" className="btn btn-ghost btn-lg" id="hero-create-event">
-                Create an Event
-              </Link>
+              {isOrganizer ? (
+                <Link to="/dashboard" className="btn btn-ghost btn-lg" id="hero-dashboard-link">
+                  Go to Dashboard
+                </Link>
+              ) : user ? (
+                <Link to="/dashboard" className="btn btn-ghost btn-lg" id="hero-create-event">
+                  Create an Event
+                </Link>
+              ) : (
+                <Link to="/auth?tab=signup&role=organizer" className="btn btn-ghost btn-lg" id="hero-create-event">
+                  Create an Event
+                </Link>
+              )}
             </div>
 
             <div className="hero-stats">
@@ -223,9 +237,11 @@ export default function HomePage() {
               </div>
               <h3 className="empty-state-title">No events yet</h3>
               <p className="empty-state-text">Be the first to create an event on TicketWave!</p>
-              <Link to="/auth?tab=signup&role=organizer" className="btn btn-primary">
-                Create an Event
-              </Link>
+              {isOrganizer ? (
+                <Link to="/dashboard" className="btn btn-primary">Go to Dashboard → Create Event</Link>
+              ) : (
+                <Link to="/auth?tab=signup&role=organizer" className="btn btn-primary">Create an Event</Link>
+              )}
             </div>
           )}
         </div>

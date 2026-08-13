@@ -31,8 +31,8 @@ export default function EventsPage() {
     setLoading(true)
     try {
       // Use start of today so events starting today still show
-        const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-        let query = supabase
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+      let query = supabase
         .from('events')
         .select('*, ticket_types(id, name, price, quantity, quantity_sold)', { count: 'exact' })
         .eq('status', 'published')
@@ -51,11 +51,24 @@ export default function EventsPage() {
       else query = query.order('start_at', { ascending: true })
 
       const { data, count, error } = await query
-      if (error) throw error
-      setEvents(data || [])
-      setTotalCount(count || 0)
+
+      // If ticket_types join fails (table not yet created), retry without it
+      if (error && error.message?.includes('ticket_types')) {
+        const { data: fallbackData, count: fallbackCount } = await supabase
+          .from('events')
+          .select('*', { count: 'exact' })
+          .eq('status', 'published')
+          .gte('start_at', todayStart.toISOString())
+          .order('start_at', { ascending: true })
+        setEvents((fallbackData || []).map(e => ({ ...e, ticket_types: [] })))
+        setTotalCount(fallbackCount || 0)
+      } else {
+        if (error) throw error
+        setEvents(data || [])
+        setTotalCount(count || 0)
+      }
     } catch (err) {
-      console.error(err)
+      console.error('Events fetch error:', err)
     } finally {
       setLoading(false)
     }

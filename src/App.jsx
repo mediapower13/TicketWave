@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -35,12 +35,14 @@ function ConfigErrorScreen() {
 }
 
 function ProtectedRoute({ children, requireOrganizer = false }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, updateProfile } = useAuth()
+  const navigate = useNavigate()
   const [timedOut, setTimedOut] = useState(false)
+  const [upgrading, setUpgrading] = useState(false)
 
   useEffect(() => {
     if (!loading) return
-    const t = setTimeout(() => setTimedOut(true), 10000) // 10s max wait
+    const t = setTimeout(() => setTimedOut(true), 10000)
     return () => clearTimeout(t)
   }, [loading])
 
@@ -54,8 +56,38 @@ function ProtectedRoute({ children, requireOrganizer = false }) {
   }
 
   if (!user) return <Navigate to="/auth" replace />
+
   if (requireOrganizer && profile?.role !== 'organizer' && profile?.role !== 'admin') {
-    return <Navigate to="/" replace />
+    // Show upgrade prompt instead of bouncing the user away
+    const handleUpgrade = async () => {
+      setUpgrading(true)
+      await updateProfile({ role: 'organizer' })
+      setUpgrading(false)
+      window.location.reload()
+    }
+    return (
+      <main className="page">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem', textAlign: 'center', padding: '2rem' }}>
+          <div style={{ fontSize: '3.5rem' }}>🎟️</div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 900 }}>Become an Organizer</h1>
+          <p style={{ color: 'var(--color-text-2)', maxWidth: 440, lineHeight: 1.7 }}>
+            Your account is currently set up as an <strong>attendee</strong>. Upgrade to an organizer account to create events, sell tickets and access your dashboard.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={handleUpgrade}
+              disabled={upgrading}
+              id="upgrade-to-organizer-btn"
+            >
+              {upgrading ? <div className="spinner" style={{ width: 18, height: 18 }} /> : '🚀 Upgrade to Organizer — Free'}
+            </button>
+            <button className="btn btn-ghost btn-lg" onClick={() => navigate('/')}>Back to Events</button>
+          </div>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-4)' }}>You’re signed in as <strong>{user?.email}</strong></p>
+        </div>
+      </main>
+    )
   }
 
   return children
